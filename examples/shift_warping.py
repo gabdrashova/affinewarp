@@ -14,7 +14,7 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.signal import firwin, lfilter, filtfilt, hilbert, kaiserord, freqz
 
 os.chdir(r'C:\dev\workspaces\affinewarp\examples\olfaction')
-# %% Load Data
+# %% Load example Data
 
 # Raw data (data for pinene odor, 1e-2 M, from one animal).
 Z = dict(np.load(r"C:\dev\workspaces\affinewarp\examples\olfaction\pinene_data.npz"))
@@ -33,7 +33,7 @@ data = SpikeData(
 frac_onsets = Z["sniff_onsets"] / Z["tmax"]
 
     
-# %% debug data
+# %% debug example data
 
 # Load Data
 Z = dict(np.load(r"C:\dev\workspaces\affinewarp\examples\olfaction\pinene_data.npz"))
@@ -648,13 +648,13 @@ for n,st in zip(neural, stim):
         
         dataEntry = database.loc[i]
                
-        # saveDirectory = os.path.join(analysisDir, 'Figures', dataEntry.Name, dataEntry.Date, 'raster_PSTH_12_11_24')
+        saveDirectory = os.path.join(analysisDir, 'Figures', dataEntry.Name, dataEntry.Date, '27-01-25', 'rasterPSTH')
         # saveDirectory = os.path.join(analysisDir, 'Figures', 'FG005', 'raster_PSTH_trial_smooth')
-        # if not os.path.isdir(saveDirectory):
-        #     os.makedirs(saveDirectory)
-        # filename = os.path.join(saveDirectory, f'{neuron}_PSTH.png')
-        # plt.savefig(filename)
-        # plt.close()
+        if not os.path.isdir(saveDirectory):
+            os.makedirs(saveDirectory)
+        filename = os.path.join(saveDirectory, f'{neuron}_PSTH.png')
+        plt.savefig(filename)
+        plt.close()
         
     i += 1
     
@@ -836,140 +836,6 @@ def plot_raster_and_psth(neuron_id, spiketimes, trials, bins, smoothed_spike_cou
         filename = os.path.join(save_path, f"neuron_{neuron_id}.png")
         plt.savefig(filename)
     plt.close()
-# %% open data all trials+changing the order based on direction
-
-
-
-spAligned_list = []
-trials_list = []
-neuron_ids_list = []
-direction_array = []
-
-i = 0
-
-for n, st in zip(neural, stim):
-    clusters = n['cluster_analysis'][n['visual']]
-    spike_times = n['spike_times']
-    spike_clusters = n['spike_clusters']
-     
-    mask = (st['temporalF'] == 2).reshape(-1)
-    stimuli_start = st['startTime'][mask].reshape(-1)
-    stimuli_end = st['endTime'][mask].reshape(-1)
-    direction = st['direction'][mask].reshape(-1)
-    running_state = st['running_state'][mask].reshape(-1)
-    dataEntry = database.loc[i]
-    
-    # clusters = [344, 349, 355, 358, 360, 365, 366, 370, 371, 373, 374, 375, 376, 377, 379, 
-    #             386, 389, 394, 396, 398, 400, 404, 407, 408, 409, 410, 415, 417, 418, 419, 
-    #             423, 424, 426, 427, 429, 430, 435]
-    
-    clusters = [398, 407, 409, 415, 417, 419, 424, 426, 427, 430]
-    
-#     for neuron_index, neuron_id in enumerate(clusters):
-#         identifier=f'{dataEntry.Name}_{dataEntry.Date}_{neuron_id}'
-#         print(f'Processing neuron {identifier}')
-        
-#         spAligned_original, trials_original = alignData( # total trials per state
-#             spike_times[spike_clusters == neuron_id],
-#             stimuli_start, 
-#             window)
-        
-#         # Append data to lists
-#         spAligned_list.append(spAligned_original)
-#         trials_list.append(trials_original)
-#         neuron_ids_list.extend([neuron_index] * len(spAligned_original))
-#         direction_array.append(direction)
-        
-    
-# spAligned_flat = np.concatenate(spAligned_list, axis=0)
-# trials_flat = np.concatenate(trials_list, axis=0)
-    
-# spAligned_array = np.array(spAligned_flat, dtype=float)  
-# trials_array = np.array(trials_flat, dtype=int)         
-# neuron_ids_array = np.array(neuron_ids_list, dtype=int)
-
-        # order trials by direction
-    spAligned_list = []
-    trials_list = []
-    neuron_ids_list = []
-    direction_array = []
-    
-    # Process each neuron
-    for neuron_index, neuron_id in enumerate(clusters):
-        identifier = f'{dataEntry.Name}_{dataEntry.Date}_{neuron_id}'
-        print(f'Processing neuron {identifier}')
-    
-        # Align spikes with trials
-        spAligned_original, trials_original = alignData(
-            spike_times[spike_clusters == neuron_id],
-            stimuli_start,
-            window
-        )
-    
-        # Unique directions
-        unique_directions = np.unique(direction)
-    
-        # Initialize lists for remapped trials and spike times
-        remapped_trials = []
-        remapped_spiketimes = []
-    
-        new_trial_index = 0  # Start counting trials from 0
-        trials_total = np.arange(len(direction))
-
-        for d in unique_directions:
-            # Find trials for the current direction
-            direction_mask = (direction == d)
-            trials_in_direction = trials_total[direction_mask]  # Ensure chronological order
-    
-            for trial in trials_in_direction:
-                # Find spike times for the current trial
-                spiketimes_in_trial = spAligned_original[trials_original == trial]
-    
-                # Append remapped trials and spike times
-                remapped_trials.extend([new_trial_index] * len(spiketimes_in_trial))
-                remapped_spiketimes.extend(spiketimes_in_trial)
-    
-                # Increment trial index
-                new_trial_index += 1
-    
-        # Append data to lists for final concatenation
-        spAligned_list.append(np.array(remapped_spiketimes))
-        trials_list.append(np.array(remapped_trials))
-        neuron_ids_list.extend([neuron_index] * len(remapped_spiketimes))
-        direction_array.append([d] * len(trials_in_direction))  # Optional: save direction info
-    
-    # Final output arrays
-    spAligned_flat = np.concatenate(spAligned_list, axis=0)
-    trials_flat = np.concatenate(trials_list, axis=0)
-    
-    spAligned_array = np.array(spAligned_flat, dtype=float)  
-    trials_array = np.array(trials_flat, dtype=int)         
-    neuron_ids_array = np.array(neuron_ids_list, dtype=int)
-
-
-tmin = 0.2
-tmax = 2
-    
-np.savez('our_data.npz',
-         spiketimes=spAligned_array,
-         trials=trials_array,
-         neuron_ids=neuron_ids_array,
-         tmin = tmin,
-         tmax = tmax
-         )
-
-
-our_data = dict(np.load('our_data.npz'))
-
-
-from affinewarp import SpikeData
-our_data = SpikeData(
-    our_data["trials"],
-    our_data["spiketimes"],
-    our_data["neuron_ids"],
-    tmin=our_data["tmin"],
-    tmax=our_data["tmax"],
-)
 
 # %% open data per direction
 desired_direction = 0
@@ -1054,8 +920,8 @@ our_data = SpikeData(
 )
 
 
-# %% Hyperparameters (our data)    
-NBINS = 180         # Number of time bins per trial
+# %% Hyperparameters (our data) + fit the model   
+NBINS = 180         # Number of time bins per trial (time window btwn tmin and tmax)
 SMOOTH_REG = 10   # Strength of roughness penalty
 WARP_REG = 0.0      # Strength of penalty on warp magnitude
 L2_REG = 0.0        # Strength of L2 penalty on template magnitude
@@ -1082,7 +948,7 @@ plt.plot(template)
 
 # binned_spikes = our_data.bin_spikes(NBINS)
 # plt.figure()
-# plt.plot(binned_spikes[0,:,0])
+# plt.plot(binned_spikes[0,:,0]) 
 
 # Fit model to full dataset (used to align sniffs).
 # shift_model.fit(our_data.bin_spikes(NBINS))
@@ -1140,7 +1006,7 @@ shifted_spikes = save_shifted_spikes(validated_alignments, example_neurons)
 original_spikes = save_shifted_spikes(our_data, example_neurons)
 
 
-# %% plot raster and psth properly 
+# %% plot raster and psth (before and after shift)
 
 smoothed_psths_original = {}
 
@@ -1163,7 +1029,7 @@ for neuron_id, data in original_spikes.items():
 
     smoothed_psths_original[neuron_id] = smoothed_psth
     # Save path for the figure
-    save_path = r"Q:\Analysis\Figures\trial_shifts\before_shift"
+    save_path = rf"Q:\Analysis\Figures\{dataEntry.Name}/{dataEntry.Date}/27-01-25/trial_shifts\before_shift" 
     # save_path = None
     # Plot combined raster and PSTH
     plot_raster_and_psth(
@@ -1200,7 +1066,7 @@ for neuron_id, data in shifted_spikes.items():
     smoothed_psths_shifted[neuron_id] = smoothed_psth
 
     # Save path for the figure
-    save_path = r"Q:\Analysis\Figures\trial_shifts\after_shift"
+    save_path = rf"Q:\Analysis\Figures\{dataEntry.Name}/{dataEntry.Date}/27-01-25/trial_shifts\after_shift"
     # save_path = None
 
     # Plot combined raster and PSTH
@@ -1362,6 +1228,58 @@ plt.plot(timeBins_stim_window, filtered_data)
 plt.title('Filtered Signal')
 
 plt.show()
+
+# %% find time shifts per trial
+
+binsize_shift_model = (tmax-tmin)/NBINS
+shifts = shift_model.shifts
+shifts_s = shifts*binsize_shift_model
+
+
+# checking the difference between original and shifted spikes to confirm
+# it seems that they are not always exactly as the binsize suggests - difference of 0.01 here and there and in different neurons
+# but consistent per trial per in a given neuron
+original_spikes_1 = original_spikes[1]['spiketimes']
+shifted_spikes_1 = shifted_spikes[1]['spiketimes']
+trials_1 = original_spikes[1]['trials']
+
+diff_spikes_1 = original_spikes_1 - shifted_spikes_1
+
+
+
+# %% subtract F1 from original PSTH
+
+pad_value = 639
+padded_F1 = np.pad(filtered_data, pad_width=pad_value, mode='constant', constant_values=0)
+F1_trial = padded_F1/20
+
+
+
+binsize_signal = timeBins[-1]-timeBins[-2]
+
+F1_trial_shifted = np.zeros((len(shifts_s), len(F1_trial)))  # Placeholder for all shifted versions
+
+for i, shift in enumerate(shifts_s):
+    shift_bins = int(shift / binsize_signal)  # Convert shift in seconds to bins
+    if shift_bins >= 0:
+        F1_trial_shifted[i, shift_bins:] = F1_trial[:len(F1_trial) - shift_bins]
+    else:
+        F1_trial_shifted[i, :shift_bins] = F1_trial[-shift_bins:]
+
+F1_subtracted_signal = psth_trace.copy()
+
+# Subtract each trial's shifted signal from the psth_trace
+for i in range(len(shifts_s)):
+    F1_subtracted_signal -= F1_trial_shifted[i]
+
+
+
+plt.figure()
+plt.plot(timeBins, psth_trace)
+plt.plot(timeBins, padded_F1)
+plt.plot(timeBins, F1_trial)
+plt.plot(timeBins, F1_trial_shifted[2])
+plt.plot(timeBins, F1_subtracted_signal)
 
 
 # %% batch raster, PSTH for shifted data all trials
@@ -1605,5 +1523,5 @@ for n,st in zip(neural, stim):
     running_state = st['running_state'][mask].reshape(-1)
     
 
-    plot_neuron_psth_and_raster(original_spikes, direction, trials_total, bin_size=0.05, sigma=0.06, save_path = r"Q:\Analysis\Figures\trial_shifts\before_shift")
-    plot_neuron_psth_and_raster(shifted_spikes, direction, trials_total, bin_size=0.05, sigma=0.06, save_path = r"Q:\Analysis\Figures\trial_shifts\after_shift")
+    plot_neuron_psth_and_raster(original_spikes, direction, trials_total, bin_size=0.05, sigma=0.06, save_path = rf"Q:\Analysis\Figures\{dataEntry.Name}/{dataEntry.Date}/27-01-25/trial_shifts\before_shift_1" )
+    plot_neuron_psth_and_raster(shifted_spikes, direction, trials_total, bin_size=0.05, sigma=0.06, save_path = rf"Q:\Analysis\Figures\{dataEntry.Name}/{dataEntry.Date}/27-01-25/trial_shifts\after_shift_1" )
