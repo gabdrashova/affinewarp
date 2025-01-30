@@ -12,6 +12,8 @@ from Functions.neural_response import *
 
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import firwin, lfilter, filtfilt, hilbert, kaiserord, freqz
+from affinewarp import ShiftWarping
+
 
 os.chdir(r'C:\dev\workspaces\affinewarp\examples\olfaction')
 # %% Load example Data
@@ -321,7 +323,7 @@ axes[0, 3].set_title("aligned to sniff")
 fig.tight_layout()
 fig.subplots_adjust(hspace=.3)
 
-# %% load our data
+# %% load data
 
 #root path (local) where the data to analyse is located
 analysisDir =  define_directory_analysis()
@@ -837,7 +839,7 @@ def plot_raster_and_psth(neuron_id, spiketimes, trials, bins, smoothed_spike_cou
         plt.savefig(filename)
     plt.close()
 
-# %% open data per direction
+# %% package data per direction
 desired_direction = 0
 
 spAligned_list = []
@@ -895,7 +897,7 @@ neuron_ids_array = np.array(neuron_ids_list, dtype=int)
 
 
 
-tmin = 0.2
+tmin = 0.4
 tmax = 2
     
 np.savez('our_data.npz',
@@ -920,16 +922,15 @@ our_data = SpikeData(
 )
 
 
-# %% Hyperparameters (our data) + fit the model   
-NBINS = 180         # Number of time bins per trial (time window btwn tmin and tmax)
+# %% Hyperparameters + fit the model   
+NBINS = 160        # Number of time bins per trial (time window btwn tmin and tmax)
 SMOOTH_REG = 10   # Strength of roughness penalty
 WARP_REG = 0.0      # Strength of penalty on warp magnitude
 L2_REG = 0.0        # Strength of L2 penalty on template magnitude
-MAXLAG = 0.1        # Maximum amount of shift allowed.
+MAXLAG = 0.5       # Maximum amount of shift allowed.
 
 
 # Specify model.
-from affinewarp import ShiftWarping
 shift_model = ShiftWarping(
     maxlag=MAXLAG,
     smoothness_reg_scale=SMOOTH_REG,
@@ -1211,19 +1212,19 @@ filtered_data = filtered_padded_data[pad_length:-pad_length]
 # Plotting the original and filtered signal for comparison
 
 plt.figure(figsize=(16, 14))
-plt.subplot(411)
+ax1 = plt.subplot(411)
 plt.plot(timeBins, psth_trace)
 plt.title('Original Signal')
 
-plt.subplot(412)
+ax2 = plt.subplot(412, sharex=ax1)
 plt.plot(timeBins_padded, padded_data)
 plt.title('Padded Signal')
 
-plt.subplot(413)
+ax3 = plt.subplot(413, sharex=ax1)
 plt.plot(timeBins_padded, filtered_padded_data)
 plt.title('Filtered Signal Padded')
 
-plt.subplot(414)
+ax4 = plt.subplot(414, sharex=ax1)
 plt.plot(timeBins_stim_window, filtered_data)
 plt.title('Filtered Signal')
 
@@ -1253,7 +1254,7 @@ pad_value = 639
 padded_F1 = np.pad(filtered_data, pad_width=pad_value, mode='constant', constant_values=0)
 F1_trial = padded_F1/20
 
-
+original_psth_nonshift = smoothed_psths_original[neuron_id]
 
 binsize_signal = timeBins[-1]-timeBins[-2]
 
@@ -1261,12 +1262,13 @@ F1_trial_shifted = np.zeros((len(shifts_s), len(F1_trial)))  # Placeholder for a
 
 for i, shift in enumerate(shifts_s):
     shift_bins = int(shift / binsize_signal)  # Convert shift in seconds to bins
+    shift_bins = - shift_bins
     if shift_bins >= 0:
         F1_trial_shifted[i, shift_bins:] = F1_trial[:len(F1_trial) - shift_bins]
     else:
         F1_trial_shifted[i, :shift_bins] = F1_trial[-shift_bins:]
 
-F1_subtracted_signal = psth_trace.copy()
+F1_subtracted_signal = original_psth_nonshift.copy()
 
 # Subtract each trial's shifted signal from the psth_trace
 for i in range(len(shifts_s)):
@@ -1275,11 +1277,30 @@ for i in range(len(shifts_s)):
 
 
 plt.figure()
-plt.plot(timeBins, psth_trace)
-plt.plot(timeBins, padded_F1)
-plt.plot(timeBins, F1_trial)
-plt.plot(timeBins, F1_trial_shifted[2])
-plt.plot(timeBins, F1_subtracted_signal)
+plt.plot(timeBins, original_psth_nonshift, label = 'Original')
+plt.plot(timeBins, padded_F1, label = 'F1')
+plt.plot(timeBins, F1_trial, label = 'F1 trial no shift')
+plt.plot(timeBins, F1_trial_shifted[2], label = 'F1 trial shift 0.14 s')
+plt.plot(timeBins, F1_subtracted_signal, label = 'F1 subtracted')
+plt.legend()
+
+
+plt.figure()
+plt.plot(timeBins, F1_trial, label = 'F1 trial no shift', linewidth=5, color='black')
+for idx, trial in enumerate(F1_trial_shifted, start=1):
+    plt.plot(timeBins, trial, label=f'Trial {idx}')
+plt.legend()
+
+# %% F1 subtracted directly
+
+F1_subtracted_wo_trial = original_psth_nonshift - padded_F1
+plt.figure()
+plt.plot(timeBins, original_psth_nonshift, label = 'Original')
+plt.plot(timeBins, padded_F1, label = 'F1')
+plt.plot(timeBins, F1_subtracted_wo_trial, label = 'F1 subtracted directly')
+plt.plot(timeBins, F1_subtracted_signal, label = 'F1 subtracted each trial')
+
+plt.legend()
 
 
 # %% batch raster, PSTH for shifted data all trials
