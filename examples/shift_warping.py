@@ -1191,15 +1191,15 @@ timeBins_padded = np.arange(
 plt.figure(figsize=(15, 10))
 plt.subplot(311)
 plt.plot(timeBins, psth_trace)
-plt.title('Original Signal')
+plt.title('Shifted mean PSTH')
 
 plt.subplot(312)
 plt.plot(timeBins_stim_window, stim_window_psth)
-plt.title('Original Signal Window')
+plt.title('Shifted mean PSTH window')
 
 plt.subplot(313)
 plt.plot(timeBins_padded, padded_data)
-plt.title('Padded Signal')
+plt.title('Shifted mean PSTH window padded')
 
 plt.tight_layout()
 plt.show()
@@ -1214,19 +1214,19 @@ filtered_data = filtered_padded_data[pad_length:-pad_length]
 plt.figure(figsize=(16, 14))
 ax1 = plt.subplot(411)
 plt.plot(timeBins, psth_trace)
-plt.title('Original Signal')
+plt.title('Shifted mean PSTH', fontsize=14, fontweight='bold')
 
 ax2 = plt.subplot(412, sharex=ax1)
 plt.plot(timeBins_padded, padded_data)
-plt.title('Padded Signal')
+plt.title('Shifted mean PSTH window padded', fontsize=14, fontweight='bold')
 
 ax3 = plt.subplot(413, sharex=ax1)
 plt.plot(timeBins_padded, filtered_padded_data)
-plt.title('Filtered Signal Padded')
+plt.title('Filtered Signal Padded', fontsize=14, fontweight='bold')
 
 ax4 = plt.subplot(414, sharex=ax1)
 plt.plot(timeBins_stim_window, filtered_data)
-plt.title('Filtered Signal')
+plt.title('Filtered Signal', fontsize=14, fontweight='bold')
 
 plt.show()
 
@@ -1262,7 +1262,7 @@ F1_trial_shifted = np.zeros((len(shifts_s), len(F1_trial)))  # Placeholder for a
 
 for i, shift in enumerate(shifts_s):
     shift_bins = int(shift / binsize_signal)  # Convert shift in seconds to bins
-    shift_bins = - shift_bins
+    # shift_bins = - shift_bins
     if shift_bins >= 0:
         F1_trial_shifted[i, shift_bins:] = F1_trial[:len(F1_trial) - shift_bins]
     else:
@@ -1291,14 +1291,42 @@ for idx, trial in enumerate(F1_trial_shifted, start=1):
     plt.plot(timeBins, trial, label=f'Trial {idx}')
 plt.legend()
 
+# %% sliced plot
+
+pad_value = 850
+# Define slicing indices
+slice_start = pad_value
+slice_end = -pad_value if pad_value > 0 else None  # Avoid issues if pad_value is 0
+
+# Slice the relevant arrays
+F1_trial_sliced = F1_trial[slice_start:slice_end]
+F1_trial_shifted_sliced = F1_trial_shifted[:, slice_start:slice_end]
+F1_subtracted_signal_sliced = F1_subtracted_signal[slice_start:slice_end]
+timeBins_sliced = timeBins[slice_start:slice_end]
+filtered_data_sliced = filtered_data[211:-211]
+# Plot sliced versions
+plt.figure()
+plt.plot(timeBins_sliced, original_psth_nonshift[slice_start:slice_end], label='Original', linewidth=2)
+plt.plot(timeBins_sliced, filtered_data_sliced, label = 'F1', linewidth=2)
+plt.plot(timeBins_sliced, F1_trial_sliced, label='F1 trial no shift', linewidth=2)
+plt.plot(timeBins_sliced, F1_trial_shifted_sliced[2], label='F1 trial shift 0.14 s', linewidth=2)
+plt.plot(timeBins_sliced, F1_subtracted_signal_sliced, label='F1 subtracted', linewidth=2)
+plt.title('F1 subtraction')
+plt.legend()
+
+plt.figure()
+plt.plot(timeBins_sliced, F1_subtracted_signal_sliced, label='F1 subtracted', linewidth=2)
+plt.title('F1 subtracted response')
 # %% F1 subtracted directly
 
 F1_subtracted_wo_trial = original_psth_nonshift - padded_F1
+
+F1_subtracted_wo_trial=F1_subtracted_wo_trial[211:-211]
 plt.figure()
-plt.plot(timeBins, original_psth_nonshift, label = 'Original')
-plt.plot(timeBins, padded_F1, label = 'F1')
-plt.plot(timeBins, F1_subtracted_wo_trial, label = 'F1 subtracted directly')
-plt.plot(timeBins, F1_subtracted_signal, label = 'F1 subtracted each trial')
+# plt.plot(timeBins_sliced, original_psth_nonshift[slice_start:slice_end], label = 'Original')
+# plt.plot(timeBins, padded_F1, label = 'F1')
+plt.plot(timeBins_sliced, F1_subtracted_wo_trial, label = 'F1 subtracted directly')
+# plt.plot(timeBins, F1_subtracted_signal, label = 'F1 subtracted each trial')
 
 plt.legend()
 
